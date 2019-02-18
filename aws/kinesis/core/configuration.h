@@ -263,6 +263,10 @@ class Configuration : private boost::noncopyable {
     return metrics_namespace_;
   }
 
+  bool metrics_upload_enabled() const noexcept {
+    return metrics_upload_enabled_;
+  }
+
   // Delay (in milliseconds) between each metrics upload.
   //
   // For testing only. There is no benefit in setting this lower or higher in
@@ -785,6 +789,11 @@ class Configuration : private boost::noncopyable {
     return *this;
   }
 
+  Configuration& metrics_upload_enabled(bool val) {
+    metrics_upload_enabled_ = val;
+    return *this;
+  }
+
   // Delay (in milliseconds) between each metrics upload.
   //
   // For testing only. There is no benefit in setting this lower or higher in
@@ -1099,6 +1108,7 @@ class Configuration : private boost::noncopyable {
   std::string metrics_granularity_ = "shard";
   std::string metrics_level_ = "detailed";
   std::string metrics_namespace_ = "KinesisProducerLibrary";
+  bool metrics_upload_enabled_ = true;
   size_t metrics_upload_delay_ = 60000;
   size_t min_connections_ = 1;
   size_t rate_limit_ = 150;
@@ -1125,4 +1135,3 @@ class Configuration : private boost::noncopyable {
 } //namespace aws
 
 #endif //AWS_KINESIS_CORE_CONFIGURATION_H_
-

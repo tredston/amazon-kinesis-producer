@@ -165,6 +165,10 @@ void KinesisProducer::create_metrics_manager() {
           granularity,
           std::move(extra_dims),
           std::chrono::milliseconds(config_->metrics_upload_delay()));
+  if (!config_->metrics_upload_enabled()) {
+    LOG(debug) << "Metrics upload to CloudWatch is disabled";
+    metrics_manager_->stop();
+  }
 }
 
 void KinesisProducer::create_kinesis_client(const std::string& ca_path) {
