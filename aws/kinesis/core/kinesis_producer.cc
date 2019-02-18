@@ -308,6 +308,11 @@ void KinesisProducer::on_metrics_request(
   auto res = reply.mutable_metrics_response();
 
   for (auto& metric : metrics) {
+    auto& accum = metric->accumulator();
+    if (!is_accumulator_valid(req, accum)) {
+      continue;
+    }
+
     auto dims = metric->all_dimensions();
 
     assert(!dims.empty());
@@ -322,7 +327,6 @@ void KinesisProducer::on_metrics_request(
       d->set_value(dims[i].second);
     }
 
-    auto& accum = metric->accumulator();
     auto stats = pm->mutable_stats();
 
     if (req.has_seconds()) {
@@ -375,6 +379,20 @@ void KinesisProducer::report_outstanding() {
             delay);
   } else {
     report_outstanding_->reschedule(delay);
+  }
+}
+
+bool KinesisProducer::is_accumulator_valid(const aws::kinesis::protobuf::MetricsRequest& req, const aws::metrics::Accumulator& accum) const {
+  if (req.has_seconds()) {
+    auto s = req.seconds();
+    return accum.min(s) != std::numeric_limits<double>::max() ||
+      accum.max(s) != -std::numeric_limits<double>::max() ||
+      !std::isnan(accum.mean(s));
+  }
+  else {
+    return accum.min() != std::numeric_limits<double>::max() ||
+      accum.max() != -std::numeric_limits<double>::max() ||
+      !std::isnan(accum.mean());
   }
 }
 

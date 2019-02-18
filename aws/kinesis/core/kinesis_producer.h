@@ -92,6 +92,8 @@ class KinesisProducer : boost::noncopyable {
 
   void report_outstanding();
 
+  bool is_accumulator_valid(const aws::kinesis::protobuf::MetricsRequest&, const aws::metrics::Accumulator& accumulator) const;
+
   std::string region_;
 
   std::shared_ptr<Configuration> config_;
