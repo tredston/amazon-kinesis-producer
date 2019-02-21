@@ -37,32 +37,11 @@ class KinesisProducer : boost::noncopyable {
       std::shared_ptr<aws::auth::MutableStaticCredentialsProvider>
           cw_creds_provider,
       std::shared_ptr<aws::utils::Executor> executor,
-      std::string ca_path)
-      : region_(std::move(region)),
-        config_(std::move(config)),
-        kinesis_creds_provider_(std::move(kinesis_creds_provider)),
-        cw_creds_provider_(std::move(cw_creds_provider)),
-        executor_(std::move(executor)),
-        ipc_manager_(std::move(ipc_manager)),
-        pipelines_([this](auto& stream) {
-          return this->create_pipeline(stream);
-        }),
-        shutdown_(false) {
-    create_kinesis_client(ca_path);
-    create_cw_client(ca_path);
-    create_metrics_manager();
-    report_outstanding();
-    message_drainer_ = aws::thread([this] { this->drain_messages(); });
-  }
+      std::string ca_path);
 
-  ~KinesisProducer() {
-    shutdown_ = true;
-    message_drainer_.join();
-  }
+  ~KinesisProducer();
 
-  void join() {
-    executor_->join();
-  }
+  void join();
 
  private:
   static const std::chrono::microseconds kMessageDrainMinBackoff;
