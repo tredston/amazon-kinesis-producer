@@ -105,7 +105,7 @@ void ShardMap::update_callback(
       const Aws::Kinesis::Model::DescribeStreamOutcome& outcome) {
   if (!outcome.IsSuccess()) {
     auto e = outcome.GetError();
-    update_fail(e.GetExceptionName(), e.GetMessage());
+    update_fail(e.GetExceptionName(), e.GetMessage(), e.ShouldRetry());
     return;
   }
 
@@ -149,10 +149,18 @@ void ShardMap::update_callback(
             << " shards";
 }
 
-void ShardMap::update_fail(const std::string& code, const std::string& msg) {
+void ShardMap::update_fail(const std::string& code, const std::string& msg, bool should_retry) {
+  if (!should_retry) {
+    LOG(error) << "Shard map update for stream \"" << stream_ << "\" failed. "
+              << "Code: " << code << " Message: " << msg;
+    WriteLock lock(mutex_);
+    state_ = INVALID;
+    return;
+  }
+
   LOG(error) << "Shard map update for stream \"" << stream_ << "\" failed. "
-             << "Code: " << code << " Message: " << msg << "; retrying in "
-             << backoff_.count() << " ms";
+            << "Code: " << code << " Message: " << msg << "; retrying in "
+            << backoff_.count() << " ms";
 
   WriteLock lock(mutex_);
   state_ = INVALID;

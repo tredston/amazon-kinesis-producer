@@ -45,14 +45,13 @@ Retrier::handle_put_records_result(std::shared_ptr<PutRecordsContext> prc) {
   auto start = prc->get_start();
   auto end = prc->get_end();
 
-
   if (!outcome.IsSuccess()) {
     auto e = outcome.GetError();
     auto code = e.GetExceptionName();
     auto msg = e.GetMessage();
     for (auto& kr : prc->get_records()) {
-      if (!(config_->fail_if_throttled() &&
-            code == "ProvisionedThroughputExceededException")) {
+      if (!(config_->fail_if_throttled() && code == "ProvisionedThroughputExceededException") && e.ShouldRetry()) {
+        LOG(trace) << "Retrying put request...";
         retry_not_expired(kr, start, end, code, msg);
       } else {
         fail(kr, start, end, code, msg);

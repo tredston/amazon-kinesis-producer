@@ -150,6 +150,10 @@ class Pipeline : boost::noncopyable {
                auto& /*sdk_req*/,
                auto& outcome,
                auto sdk_ctx) {
+          if (!outcome.IsSuccess()) {
+            auto e = outcome.GetError();
+            LOG(error) << "Failed to put records, exception: " << e.GetExceptionName() << " with cause: " << e.GetMessage();
+          }
           auto ctx = std::dynamic_pointer_cast<PutRecordsContext>(
               std::const_pointer_cast<Aws::Client::AsyncCallerContext>(
                   sdk_ctx));
