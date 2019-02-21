@@ -57,6 +57,9 @@ boost::optional<uint64_t> ShardMap::shard_id(const uint128_t& hash_key) {
                  << " with the shard map. Hash key = " << hash_key;
     }
   }
+  else {
+    LOG(warning) << "Could not map hash key to shard ID: shard map not ready.";
+  }
 
   return boost::none;
 }

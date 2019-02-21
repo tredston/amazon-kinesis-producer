@@ -141,6 +141,7 @@ class Pipeline : boost::noncopyable {
   }
 
   void send_put_records_request(const std::shared_ptr<PutRecordsRequest>& prr) {
+    LOG(trace) << "Putting records";
     auto prc = std::make_shared<PutRecordsContext>(stream_, prr->items());
     prc->set_start(std::chrono::steady_clock::now());
     kinesis_client_->PutRecordsAsync(

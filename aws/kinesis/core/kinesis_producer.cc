@@ -245,6 +245,7 @@ Pipeline* KinesisProducer::create_pipeline(const std::string& stream) {
       kinesis_client_,
       metrics_manager_,
       [this](auto& ur) {
+        LOG(trace) << "Sending put record result";
         ipc_manager_->put(ur->to_put_record_result().SerializeAsString());
       });
 }
@@ -314,8 +315,8 @@ void KinesisProducer::on_flush(const aws::kinesis::protobuf::Flush& flush_msg) {
   }
 }
 
-void KinesisProducer::on_metrics_request(
-    const aws::kinesis::protobuf::Message& m) {
+void KinesisProducer::on_metrics_request(const aws::kinesis::protobuf::Message& m) {
+  LOG(info) << "Processing metrics request";
   auto req = m.metrics_request();
   std::vector<std::shared_ptr<aws::metrics::Metric>> metrics;
 
