@@ -81,6 +81,8 @@ bool MetricsManager::MetricsCmp::operator()(std::shared_ptr<Metric>& a,
   return false;
 }
 void MetricsManager::upload() {
+  LOG(trace) << "Uploading KPL metrics to CloudWatch";
+
   std::vector<std::shared_ptr<Metric>> uploads;
 
   for (auto& m : metrics_index_.get_all()) {

@@ -77,7 +77,7 @@ class ShardMap : boost::noncopyable {
   void update_callback(
       const Aws::Kinesis::Model::DescribeStreamOutcome& outcome);
 
-  void update_fail(const std::string& code, const std::string& msg = "");
+  void update_fail(const std::string& code, const std::string& msg = "", bool should_retry = true);
 
   std::shared_ptr<aws::utils::Executor> executor_;
   std::shared_ptr<Aws::Kinesis::KinesisClient> kinesis_client_;

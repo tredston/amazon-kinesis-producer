@@ -68,15 +68,13 @@ void setup_logging(const BoostLevel level) {
     boost::log::add_common_attributes();
     namespace expr = boost::log::expressions;
     auto log_expr = expr::stream
-        << "++++" << std::endl
         << "[" << expr::format_date_time<boost::posix_time::ptime>(
               "TimeStamp",
               "%Y-%m-%d %H:%M:%S.%f") << "] "
         << "[" << expr::attr<boost::log::attributes::current_process_id::value_type>("ProcessID") << "]"
         << "[" << expr::attr<boost::log::attributes::current_thread_id::value_type>("ThreadID") << "] "
         << "[" << boost::log::trivial::severity << "] "
-        << expr::smessage
-        << std::endl << "----";
+        << expr::smessage;
     sink->set_formatter(log_expr);
 
     boost::log::core::get()->add_sink(sink);

@@ -141,6 +141,7 @@ class Pipeline : boost::noncopyable {
   }
 
   void send_put_records_request(const std::shared_ptr<PutRecordsRequest>& prr) {
+    LOG(trace) << "Putting records";
     auto prc = std::make_shared<PutRecordsContext>(stream_, prr->items());
     prc->set_start(std::chrono::steady_clock::now());
     kinesis_client_->PutRecordsAsync(
@@ -149,6 +150,10 @@ class Pipeline : boost::noncopyable {
                auto& /*sdk_req*/,
                auto& outcome,
                auto sdk_ctx) {
+          if (!outcome.IsSuccess()) {
+            auto e = outcome.GetError();
+            LOG(error) << "Failed to put records, exception: " << e.GetExceptionName() << " with cause: " << e.GetMessage();
+          }
           auto ctx = std::dynamic_pointer_cast<PutRecordsContext>(
               std::const_pointer_cast<Aws::Client::AsyncCallerContext>(
                   sdk_ctx));

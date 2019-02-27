@@ -250,3 +250,7 @@ target_link_libraries(test_driver ${CMAKE_THREAD_LIBS_INIT} LibProto LibAwsCore 
 add_executable(tests ${SOURCE_FILES} ${TESTS_SOURCE} ${LOGGING_TRIGGERS} aws/kinesis/test/test.cc)
 target_include_directories(tests SYSTEM PUBLIC ${THIRD_PARTY_INCLUDE})
 target_link_libraries(tests ${CMAKE_THREAD_LIBS_INIT} LibProto LibAwsCore LibAwsKinesis LibAwsMonitoring ${LIBBACKTRACE_LIBRARIES} ${STATIC_LIBS} boost_unit_test_framework ${UUID_LIBRARIES})
+
+add_library(kpl STATIC ${SOURCE_FILES} ${LOGGING_TRIGGERS})
+target_include_directories(kpl SYSTEM PUBLIC ${THIRD_PARTY_INCLUDE})
+target_link_libraries(kpl ${CMAKE_THREAD_LIBS_INIT} LibProto LibAwsCore LibAwsKinesis LibAwsMonitoring ${LIBBACKTRACE_LIBRARIES} ${STATIC_LIBS} ${UUID_LIBRARIES})

@@ -139,6 +139,40 @@ namespace core {
 const std::chrono::microseconds KinesisProducer::kMessageDrainMinBackoff(100);
 const std::chrono::microseconds KinesisProducer::kMessageDrainMaxBackoff(10000);
 
+KinesisProducer::KinesisProducer(
+    std::shared_ptr<IpcManager> ipc_manager,
+    std::string region,
+    std::shared_ptr<Configuration>& config,
+    std::shared_ptr<aws::auth::MutableStaticCredentialsProvider>
+        kinesis_creds_provider,
+    std::shared_ptr<aws::auth::MutableStaticCredentialsProvider>
+        cw_creds_provider,
+    std::shared_ptr<aws::utils::Executor> executor,
+    std::string ca_path)
+    : region_(std::move(region)),
+      config_(std::move(config)),
+      kinesis_creds_provider_(std::move(kinesis_creds_provider)),
+      cw_creds_provider_(std::move(cw_creds_provider)),
+      executor_(std::move(executor)),
+      ipc_manager_(std::move(ipc_manager)),
+      pipelines_([this](auto& stream) { return this->create_pipeline(stream); }),
+      shutdown_(false) {
+  create_kinesis_client(ca_path);
+  create_cw_client(ca_path);
+  create_metrics_manager();
+  report_outstanding();
+  message_drainer_ = aws::thread([this] { this->drain_messages(); });
+}
+
+KinesisProducer::~KinesisProducer() {
+  shutdown_ = true;
+  message_drainer_.join();
+}
+
+void KinesisProducer::join() {
+  executor_->join();
+}
+
 void KinesisProducer::create_metrics_manager() {
   auto level = aws::metrics::constants::level(config_->metrics_level());
   auto granularity =
@@ -165,6 +199,10 @@ void KinesisProducer::create_metrics_manager() {
           granularity,
           std::move(extra_dims),
           std::chrono::milliseconds(config_->metrics_upload_delay()));
+  if (!config_->metrics_upload_enabled()) {
+    LOG(debug) << "Metrics upload to CloudWatch is disabled";
+    metrics_manager_->stop();
+  }
 }
 
 void KinesisProducer::create_kinesis_client(const std::string& ca_path) {
@@ -207,6 +245,7 @@ Pipeline* KinesisProducer::create_pipeline(const std::string& stream) {
       kinesis_client_,
       metrics_manager_,
       [this](auto& ur) {
+        LOG(trace) << "Sending put record result";
         ipc_manager_->put(ur->to_put_record_result().SerializeAsString());
       });
 }
@@ -276,8 +315,8 @@ void KinesisProducer::on_flush(const aws::kinesis::protobuf::Flush& flush_msg) {
   }
 }
 
-void KinesisProducer::on_metrics_request(
-    const aws::kinesis::protobuf::Message& m) {
+void KinesisProducer::on_metrics_request(const aws::kinesis::protobuf::Message& m) {
+  LOG(info) << "Processing metrics request";
   auto req = m.metrics_request();
   std::vector<std::shared_ptr<aws::metrics::Metric>> metrics;
 
@@ -304,6 +343,11 @@ void KinesisProducer::on_metrics_request(
   auto res = reply.mutable_metrics_response();
 
   for (auto& metric : metrics) {
+    auto& accum = metric->accumulator();
+    if (!is_accumulator_valid(req, accum)) {
+      continue;
+    }
+
     auto dims = metric->all_dimensions();
 
     assert(!dims.empty());
@@ -318,7 +362,6 @@ void KinesisProducer::on_metrics_request(
       d->set_value(dims[i].second);
     }
 
-    auto& accum = metric->accumulator();
     auto stats = pm->mutable_stats();
 
     if (req.has_seconds()) {
@@ -371,6 +414,20 @@ void KinesisProducer::report_outstanding() {
             delay);
   } else {
     report_outstanding_->reschedule(delay);
+  }
+}
+
+bool KinesisProducer::is_accumulator_valid(const aws::kinesis::protobuf::MetricsRequest& req, const aws::metrics::Accumulator& accum) const {
+  if (req.has_seconds()) {
+    auto s = req.seconds();
+    return accum.min(s) != std::numeric_limits<double>::max() ||
+      accum.max(s) != -std::numeric_limits<double>::max() ||
+      !std::isnan(accum.mean(s));
+  }
+  else {
+    return accum.min() != std::numeric_limits<double>::max() ||
+      accum.max() != -std::numeric_limits<double>::max() ||
+      !std::isnan(accum.mean());
   }
 }
 
