@@ -31,9 +31,13 @@
 #include <aws/utils/io_service_executor.h>
 #include <aws/utils/logging.h>
 #include <aws/utils/utils.h>
+#include <aws/core/Aws.h>
 
 int main(int argc, char** argv) {
   aws::utils::setup_logging();
+
+  Aws::SDKOptions sdk_options;
+  Aws::InitAPI(sdk_options);
 
   //ProfilerStart("test_driver.prof");
 
